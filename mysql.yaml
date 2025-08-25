@@ -1,0 +1,45 @@
+- name: configure mysql 
+  hosts: mysql
+  become: yes
+  vars:
+    login_host: mysql.sainath.online
+  vars_prompt:
+    name: mysql_root_password
+    prompt: "please enter mysql root password"
+    private: no
+
+  tasks:
+  - name: install mysql server
+    ansible.builtin.dnf:
+      name: mysql-server
+      state: installed
+  
+  - name: start and enable service
+    ansible.builtin.service:
+      name: mysql service
+      state: reloaded
+      enabled: yes
+  
+  - name: install python dependencies
+    ansible.builtin.pip:
+      name:
+      - PyMySQL
+      - cryptography
+      executable: pip3.9
+  
+  - name: collect info
+    community.mysql.mysql_info:
+      login_user: root
+      login_password: "{{mysql_root_password}}"
+      login_host: "{{login_host}}"
+      filter: version
+    ignore_errors: yes
+    register: my_sql_output
+
+  - name: print output
+    ansible.builtin.debug:
+      msg: "{{my_sql_output}}"
+
+  - name: setup root password 
+    ansible.builtin.command: "mysql_secure_installation --set-root-pass {{mysql_root_password}}"
+    when: my_sql_output.failed is true 
